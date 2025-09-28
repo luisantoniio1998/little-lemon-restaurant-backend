@@ -33,7 +33,17 @@ class MenuDetailView(generics.RetrieveUpdateDestroyAPIView):
 
 class BookingListCreateView(generics.ListCreateAPIView):
     serializer_class = BookingSerializer
-    permission_classes = [IsAuthenticated]
+
+    def get_permissions(self):
+        """
+        Allow anonymous bookings for POST requests (customer reservations)
+        Require authentication for GET requests (viewing bookings)
+        """
+        if self.request.method == 'POST':
+            permission_classes = [AllowAny]
+        else:
+            permission_classes = [IsAuthenticated]
+        return [permission() for permission in permission_classes]
 
     def get_queryset(self):
         user = self.request.user
@@ -47,7 +57,11 @@ class BookingListCreateView(generics.ListCreateAPIView):
         return BookingSerializer
 
     def perform_create(self, serializer):
-        serializer.save(user=self.request.user)
+        # For anonymous bookings, don't set user
+        if self.request.user.is_authenticated:
+            serializer.save(user=self.request.user)
+        else:
+            serializer.save()
 
 
 class BookingDetailView(generics.RetrieveUpdateDestroyAPIView):
